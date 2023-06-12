@@ -8,7 +8,7 @@
 
 version="${1:-19.3.0-ee}"
 db_port="${2:-1521}"
-logminer="${3:-logminer}"
+logminer="${3:-nologminer}"
 platform="${4:-linux/amd64}"
 db_pwd=Redis123
 
@@ -64,10 +64,20 @@ if [ $# -eq 3 ] && [ "$logminer" = "logminer" ]; then
 	echo "Setting up LogMiner and creating C##RCUSER schema on $container_name.."
 	docker cp setup_logminer.sh "${container_name}":/tmp/setup_logminer.sh
 	docker cp load_c##rcuser_schema.sh "${container_name}":/tmp/load_c##rcuser_schema.sh
+	docker cp ../data/emp.csv "${container_name}":/tmp/emp.csv
+  docker cp emp.ctl "${container_name}":/tmp/emp.ctl
 	docker exec "${container_name}" bash -c "/tmp/setup_logminer.sh"
 	docker exec "${container_name}" bash -c "/tmp/load_c##rcuser_schema.sh"
+	docker cp load_sql.sh "${container_name}":/tmp/load_sql.sh
+	docker exec "${container_name}" bash -c "/tmp/load_sql.sh"
 else
 	echo "Skipping LogMiner setup.."
+	docker cp ../data/emp.csv "${container_name}":/tmp/emp.csv
+  docker cp emp.ctl "${container_name}":/tmp/emp.ctl
+	docker cp load_c##rcuser_schema.sh "${container_name}":/tmp/load_c##rcuser_schema.sh
+	docker exec "${container_name}" bash -c "/tmp/load_c##rcuser_schema.sh"
+	docker cp load_sql.sh "${container_name}":/tmp/load_sql.sh
+	docker exec "${container_name}" bash -c "/tmp/load_sql.sh"
 fi
 
 echo "done"
