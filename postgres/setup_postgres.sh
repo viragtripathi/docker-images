@@ -42,7 +42,9 @@ sleep 30
 echo "Creating $db_name database and emp table."
 #run the setup script to create the DB and the table in the DB
 docker cp postgres_cdc.sql "${container_name}":postgres_cdc.sql
-docker exec "${container_name}" bash -c 'psql -U"$POSTGRES_USER" -d"$POSTGRES_DB" < postgres_cdc.sql'
 docker cp ../data/emp.csv "${container_name}":/tmp/emp.csv
+docker cp load_table.sql "${container_name}":load_table.sql
+docker exec "${container_name}" bash -c 'psql -U"$POSTGRES_USER" -d"$POSTGRES_DB" < postgres_cdc.sql'
+docker exec "${container_name}" bash -c 'psql -U"$POSTGRES_USER" -d"$POSTGRES_DB" < load_table.sql'
 
 echo "done"
