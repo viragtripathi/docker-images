@@ -65,7 +65,7 @@ if [ $# -eq 3 ] && [ "$logminer" = "logminer" ]; then
 	docker cp setup_logminer.sh "${container_name}":/tmp/setup_logminer.sh
 	docker cp load_c##rcuser_schema.sh "${container_name}":/tmp/load_c##rcuser_schema.sh
 	docker cp ../data/emp.csv "${container_name}":/tmp/emp.csv
-  docker cp emp.ctl "${container_name}":/tmp/emp.ctl
+        docker cp emp.ctl "${container_name}":/tmp/emp.ctl
 	docker exec "${container_name}" bash -c "/tmp/setup_logminer.sh"
 	docker exec "${container_name}" bash -c "/tmp/load_c##rcuser_schema.sh"
 	docker cp load_sql.sh "${container_name}":/tmp/load_sql.sh
@@ -73,7 +73,7 @@ if [ $# -eq 3 ] && [ "$logminer" = "logminer" ]; then
 else
 	echo "Skipping LogMiner setup.."
 	docker cp ../data/emp.csv "${container_name}":/tmp/emp.csv
-  docker cp emp.ctl "${container_name}":/tmp/emp.ctl
+        docker cp emp.ctl "${container_name}":/tmp/emp.ctl
 	docker cp load_c##rcuser_schema.sh "${container_name}":/tmp/load_c##rcuser_schema.sh
 	docker exec "${container_name}" bash -c "/tmp/load_c##rcuser_schema.sh"
 	docker cp load_sql.sh "${container_name}":/tmp/load_sql.sh
