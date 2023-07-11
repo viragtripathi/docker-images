@@ -92,7 +92,7 @@ echo "Database JobManager.." && cat ./JobManager
 
 echo "Database port mappings per node. We are using mDNS so use the IP and exposed port to connect to the databases."
 echo "node1:"
-docker port "${container_name}" | grep -e "12000|12001"
+docker port "${container_name}" | grep -E "12000|12001"
 
 # Enable bdb name
 docker exec -it "${container_name}" bash -c "/opt/redislabs/bin/ccs-cli hset cluster_settings metrics_exporter_expose_bdb_name enabled"
