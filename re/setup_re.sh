@@ -102,7 +102,7 @@ echo "------- RLADMIN status -------"
 docker exec "${container_name}" bash -c "rladmin status"
 echo ""
 echo "You can open a browser and access Redis Enterprise Admin UI at https://127.0.0.1:18443 (replace localhost with your ip/host) with username=demo@redis.com and password=redislabs."
-echo "DISCLAIMER: This is best for local development or functional testing. Please see, https://docs.redis.com/latest/rs/getting-started/getting-started-docker"
+echo "DISCLAIMER: This is best for local development or functional testing. Please see, https://docs.redis.com/latest/rs/installing-upgrading/quickstarts/docker-quickstart/"
 
 # Cleanup
 rm bootstrap nodes modules.txt allen virag Target JobManager
