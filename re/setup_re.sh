@@ -55,72 +55,48 @@ echo "$(date) - connected to metrics exporter port successfully"
 
 # Create Redis Enterprise cluster
 echo "Waiting for the servers to start..."
-sleep 120
+sleep 60
 echo "Creating Redis Enterprise cluster..."
 
-tee -a ./create_cluster.sh <<EOF
-/opt/redislabs/bin/rladmin cluster create name redis-connect-test-cluster.local username demo@redis.com password redislabs
-EOF
-
-chmod a+x create_cluster.sh
-docker cp create_cluster.sh "${container_name}":/opt/create_cluster.sh
-docker exec --user root "${container_name}" bash -c "/opt/create_cluster.sh > create_cluster.out"
-sleep 60
-docker cp "${container_name}":/opt/create_cluster.out .
-
-if [ "$(grep -c "ok" ./create_cluster.out)" -eq 1 ]; then
-  cat ./create_cluster.out
-else
-  echo "The output file does not contain the expected output"
-fi
+while [[ "$(curl -o /dev/null -w ''%{http_code}'' -X POST -H 'Content-Type:application/json' -d '{"action":"create_cluster","cluster":{"name":"re-cluster.local"},"node":{"paths":{"persistent_path":"/var/opt/redislabs/persist","ephemeral_path":"/var/opt/redislabs/tmp"}},"credentials":{"username":"demo@redis.com","password":"redislabs"}}' -k https://localhost:19443/v1/bootstrap/create_cluster)" != "200" ]]; do sleep 5; done
 
 # Test the cluster. cluster info and nodes
-curl -s -u demo@redis.com:redislabs -k https://localhost:19443/v1/bootstrap
-curl -s -u demo@redis.com:redislabs -k https://localhost:19443/v1/nodes
+while [[ "$(curl -o ./bootstrap -w ''%{http_code}'' -u demo@redis.com:redislabs -k https://localhost:19443/v1/bootstrap)" != "200" ]]; do sleep 5; done
+while [[ "$(curl -o ./nodes -w ''%{http_code}'' -u demo@redis.com:redislabs -k https://localhost:19443/v1/nodes)" != "200" ]]; do sleep 5; done
+echo "Bootstrap.." && cat ./bootstrap
+echo "Nodes.." && cat ./nodes
 
 # Get the module info to be used for database creation
-tee -a ./list_modules.sh <<EOF
-curl -s -k -L -u demo@redis.com:redislabs --location-trusted -H "Content-Type: application/json" -X GET https://localhost:9443/v1/modules | python -c 'import sys, json; modules = json.load(sys.stdin);
-modulelist = open("./module_list.txt", "a")
-for i in modules:
-     lines = i["display_name"], " ", i["module_name"], " ", i["uid"], " ", i["semantic_version"], "\n"
-     modulelist.writelines(lines)
-modulelist.close()'
-EOF
+while [[ "$(curl -o ./modules.txt -w ''%{http_code}'' -u demo@redis.com:redislabs -k https://localhost:19443/v1/modules)" != "200" ]]; do sleep 5; done
 
-docker cp list_modules.sh "${container_name}":/opt/list_modules.sh
-docker exec --user root "${container_name}" bash -c "chmod 777 /opt/list_modules.sh"
-docker exec --user root "${container_name}" bash -c "/opt/list_modules.sh"
-docker cp "${container_name}":/opt/module_list.txt .
+json_module_name=$(cat ./modules.txt | grep -oE '"module_name":"[^"]*|"semantic_version":"[^"]*' | grep -iA1 json | cut -d '"' -f 4 | head -1)
+json_semantic_version=$(cat ./modules.txt | grep -oE '"module_name":"[^"]*|"semantic_version":"[^"]*' | grep -iA1 json | cut -d '"' -f 4 | tail -1)
+search_module_name=$(cat ./modules.txt | grep -oE '"module_name":"[^"]*|"semantic_version":"[^"]*' | grep -iA1 search | cut -d '"' -f 4 | head -1)
+search_semantic_version=$(cat ./modules.txt | grep -oE '"module_name":"[^"]*|"semantic_version":"[^"]*' | grep -iA1 search | cut -d '"' -f 4 | tail -1)
+timeseries_module_name=$(cat ./modules.txt | grep -oE '"module_name":"[^"]*|"semantic_version":"[^"]*' | grep -iA1 timeseries | cut -d '"' -f 4 | head -1)
+timeseries_semantic_version=$(cat ./modules.txt | grep -oE '"module_name":"[^"]*|"semantic_version":"[^"]*' | grep -iA1 timeseries | cut -d '"' -f 4 | tail -1)
 
-json_module_name=$(grep -i json ./module_list.txt | cut -d ' ' -f 2)
-json_semantic_version=$(grep -i json ./module_list.txt | cut -d ' ' -f 4)
-search_module_name=$(grep -i search ./module_list.txt | cut -d ' ' -f 3)
-search_semantic_version=$(grep -i search ./module_list.txt | cut -d ' ' -f 5)
-timeseries_module_name=$(grep -i timeseries ./module_list.txt | cut -d ' ' -f 2)
-timeseries_semantic_version=$(grep -i timeseries ./module_list.txt | cut -d ' ' -f 4)
-
-curl -s -X POST -k -u demo@redis.com:redislabs -H "Content-Type: application/json" -d "{\"email\": \"virag@redis.com\",\"password\": \"Redis123\",\"name\": \"virag\",\"email_alerts\": false,\"role\": \"db_member\"}" https://localhost:19443/v1/users
-curl -s -X POST -k -u demo@redis.com:redislabs -H "Content-Type: application/json" -d "{\"email\": \"allen@redis.com\",\"password\": \"Redis123\",\"name\": \"allen\",\"email_alerts\": false,\"role\": \"db_member\"}" https://localhost:19443/v1/users
+while [[ "$(curl -o ./virag -w ''%{http_code}'' -u demo@redis.com:redislabs -X POST -H "Content-Type: application/json" -d "{\"email\": \"virag@redis.com\",\"password\": \"Redis123\",\"name\": \"virag\",\"email_alerts\": false,\"role\": \"db_member\"}" -k https://localhost:19443/v1/users)" != "200" ]]; do sleep 5; done
+while [[ "$(curl -o ./allen -w ''%{http_code}'' -u demo@redis.com:redislabs -X POST -H "Content-Type: application/json" -d "{\"email\": \"allen@redis.com\",\"password\": \"Redis123\",\"name\": \"allen\",\"email_alerts\": false,\"role\": \"db_member\"}" -k https://localhost:19443/v1/users)" != "200" ]]; do sleep 5; done
+echo "User virag.." && cat ./virag
+echo "User allen.." && cat ./allen
 
 echo "Creating databases..."
 echo Creating Redis Target database with "${search_module_name}" version "${search_semantic_version}" and "${json_module_name}" version "${json_semantic_version}"
-curl -s -k -L -u demo@redis.com:redislabs --location-trusted -H "Content-type:application/json" -d '{ "name": "Target", "port": 12000, "memory_size": 500000000, "type" : "redis", "replication": false, "default_user": false, "roles_permissions": [{"role_uid": 4, "redis_acl_uid": 1}], "module_list": [ {"module_args": "PARTITIONS AUTO", "module_name": "'"$search_module_name"'", "semantic_version": "'"$search_semantic_version"'"}, {"module_args": "", "module_name": "'"$json_module_name"'", "semantic_version": "'"$json_semantic_version"'"} ] }' https://localhost:19443/v1/bdbs
-
-sleep 30
+while [[ "$(curl -o ./Target -w ''%{http_code}'' -u demo@redis.com:redislabs --location-trusted -H "Content-type:application/json" -d '{ "name": "Target", "port": 12000, "memory_size": 500000000, "type" : "redis", "replication": false, "default_user": false, "roles_permissions": [{"role_uid": 4, "redis_acl_uid": 1}], "module_list": [ {"module_args": "PARTITIONS AUTO", "module_name": "'"$search_module_name"'", "semantic_version": "'"$search_semantic_version"'"}, {"module_args": "", "module_name": "'"$json_module_name"'", "semantic_version": "'"$json_semantic_version"'"} ] }' -k https://localhost:19443/v1/bdbs)" != "200" ]]; do sleep 5; done
+echo "Database Target.." && cat ./Target
 
 echo Creating Redis JobManager database with "${timeseries_module_name}" version "${timeseries_semantic_version}"
-curl -s -k -L -u demo@redis.com:redislabs --location-trusted -H "Content-type:application/json" -d '{"name": "JobManager", "type":"redis", "replication": false, "memory_size": 250000000, "port": 12001, "default_user": false, "roles_permissions": [{"role_uid": 4, "redis_acl_uid": 1}], "module_list": [{"module_args": "", "module_name": "'"$timeseries_module_name"'", "semantic_version": "'"$timeseries_semantic_version"'"} ] }' https://localhost:19443/v1/bdbs
-
-sleep 30
+while [[ "$(curl -o ./JobManager -w ''%{http_code}'' -u demo@redis.com:redislabs --location-trusted -H "Content-type:application/json" -d '{"name": "JobManager", "type":"redis", "replication": false, "memory_size": 250000000, "port": 12001, "default_user": false, "roles_permissions": [{"role_uid": 4, "redis_acl_uid": 1}], "module_list": [{"module_args": "", "module_name": "'"$timeseries_module_name"'", "semantic_version": "'"$timeseries_semantic_version"'"} ] }' -k https://localhost:19443/v1/bdbs)" != "200" ]]; do sleep 5; done
+echo "Database JobManager.." && cat ./JobManager
 
 echo "Database port mappings per node. We are using mDNS so use the IP and exposed port to connect to the databases."
 echo "node1:"
 docker port "${container_name}" | grep -e "12000|12001"
 
 # Enable bdb name
-#docker exec -it "${container_name}" bash -c "/opt/redislabs/bin/ccs-cli hset cluster_settings metrics_exporter_expose_bdb_name enabled"
-#docker exec -it "${container_name}" bash -c "/opt/redislabs/bin/supervisorctl restart metrics_exporter"
+docker exec -it "${container_name}" bash -c "/opt/redislabs/bin/ccs-cli hset cluster_settings metrics_exporter_expose_bdb_name enabled"
+docker exec -it "${container_name}" bash -c "/opt/redislabs/bin/supervisorctl restart metrics_exporter"
 
 echo "------- RLADMIN status -------"
 docker exec "${container_name}" bash -c "rladmin status"
@@ -129,9 +105,6 @@ echo "You can open a browser and access Redis Enterprise Admin UI at https://127
 echo "DISCLAIMER: This is best for local development or functional testing. Please see, https://docs.redis.com/latest/rs/getting-started/getting-started-docker"
 
 # Cleanup
-rm list_modules.sh create_cluster.* module_list.txt
-docker exec --user root "${container_name}" bash -c "rm /opt/list_modules.sh"
-docker exec --user root "${container_name}" bash -c "rm /opt/module_list.txt"
-docker exec --user root "${container_name}" bash -c "rm /opt/create_cluster.*"
+rm bootstrap nodes modules.txt allen virag Target JobManager
 
 echo "done"
