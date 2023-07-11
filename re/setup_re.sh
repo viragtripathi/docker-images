@@ -62,7 +62,7 @@ tee -a ./create_cluster.sh <<EOF
 /opt/redislabs/bin/rladmin cluster create name redis-connect-test-cluster.local username demo@redis.com password redislabs
 EOF
 
-chmod 777 create_cluster.sh
+chmod a+x create_cluster.sh
 docker cp create_cluster.sh "${container_name}":/opt/create_cluster.sh
 docker exec --user root "${container_name}" bash -c "/opt/create_cluster.sh > create_cluster.out"
 sleep 60
@@ -107,10 +107,12 @@ echo "Creating databases..."
 echo Creating Redis Target database with "${search_module_name}" version "${search_semantic_version}" and "${json_module_name}" version "${json_semantic_version}"
 curl -s -k -L -u demo@redis.com:redislabs --location-trusted -H "Content-type:application/json" -d '{ "name": "Target", "port": 12000, "memory_size": 500000000, "type" : "redis", "replication": false, "default_user": false, "roles_permissions": [{"role_uid": 4, "redis_acl_uid": 1}], "module_list": [ {"module_args": "PARTITIONS AUTO", "module_name": "'"$search_module_name"'", "semantic_version": "'"$search_semantic_version"'"}, {"module_args": "", "module_name": "'"$json_module_name"'", "semantic_version": "'"$json_semantic_version"'"} ] }' https://localhost:19443/v1/bdbs
 
+sleep 30
+
 echo Creating Redis JobManager database with "${timeseries_module_name}" version "${timeseries_semantic_version}"
 curl -s -k -L -u demo@redis.com:redislabs --location-trusted -H "Content-type:application/json" -d '{"name": "JobManager", "type":"redis", "replication": false, "memory_size": 250000000, "port": 12001, "default_user": false, "roles_permissions": [{"role_uid": 4, "redis_acl_uid": 1}], "module_list": [{"module_args": "", "module_name": "'"$timeseries_module_name"'", "semantic_version": "'"$timeseries_semantic_version"'"} ] }' https://localhost:19443/v1/bdbs
 
-sleep 20
+sleep 30
 
 echo "Database port mappings per node. We are using mDNS so use the IP and exposed port to connect to the databases."
 echo "node1:"

@@ -8,7 +8,7 @@
 
 version="${1:-19.3.0-ee}"
 db_port="${2:-1521}"
-logminer="${3:-nologminer}"
+logminer="${3:-logminer}"
 platform="${4:-linux/amd64}"
 db_pwd=Redis123
 
@@ -28,14 +28,21 @@ else
     fi
 fi
 
+# create volume and setup necessary permissions
+sudo rm -rf $(pwd)/$version/oradata
+sudo mkdir -p $(pwd)/$version/oradata/recovery_area
+sudo chgrp -R 54321 $(pwd)/$version/oradata
+sudo chown -R 54321 $(pwd)/$version/oradata
+
 echo "Creating $container_name docker container."
 docker run \
   --init \
   --name "${container_name}" \
   --privileged=true \
   --platform "${platform}" \
-	-p "${db_port}":1521 \
-	-e ORACLE_PWD=$db_pwd \
+  -p "${db_port}":1521 \
+  -e ORACLE_PWD=$db_pwd \
+  -v $(pwd)/$version/oradata:/opt/oracle/oradata \
   -d virag/oracle-"${version}"
 
 ip=$(docker inspect --format='{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "${container_name}")

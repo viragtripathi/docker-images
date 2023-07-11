@@ -118,7 +118,7 @@ tee -a ./create_cluster1.sh <<EOF
 /opt/redislabs/bin/rladmin cluster create name cluster1.local username demo@redis.com password redislabs
 EOF
 
-chmod 777 create_cluster1.sh
+chmod a+x create_cluster1.sh
 docker cp create_cluster1.sh "${container_one}":/opt/create_cluster1.sh
 docker exec --user root "${container_one}" bash -c "/opt/create_cluster1.sh > create_cluster1.out"
 sleep 60
@@ -134,7 +134,7 @@ tee -a ./create_cluster2.sh <<EOF
 /opt/redislabs/bin/rladmin cluster create name cluster2.local username demo@redis.com password redislabs
 EOF
 
-chmod 777 create_cluster2.sh
+chmod a+x create_cluster2.sh
 docker cp create_cluster2.sh "${container_two}":/opt/create_cluster2.sh
 docker exec --user root "${container_two}" bash -c "/opt/create_cluster2.sh > create_cluster2.out"
 sleep 60
@@ -150,7 +150,7 @@ tee -a ./create_cluster3.sh <<EOF
 /opt/redislabs/bin/rladmin cluster create name cluster3.local username demo@redis.com password redislabs
 EOF
 
-chmod 777 create_cluster3.sh
+chmod a+x create_cluster3.sh
 docker cp create_cluster3.sh "${container_three}":/opt/create_cluster3.sh
 docker exec --user root "${container_three}" bash -c "/opt/create_cluster3.sh > create_cluster3.out"
 sleep 60
@@ -176,7 +176,7 @@ modulelist.close()'
 EOF
 
 docker cp list_modules.sh "${container_one}":/opt/list_modules.sh
-docker exec --user root "${container_one}" bash -c "chmod 777 /opt/list_modules.sh"
+docker exec --user root "${container_one}" bash -c "chmod a+x /opt/list_modules.sh"
 docker exec --user root "${container_one}" bash -c "/opt/list_modules.sh"
 docker cp "${container_one}":/opt/module_list.txt .
 
@@ -196,7 +196,7 @@ curl -s -k -L -u demo@redis.com:redislabs --location-trusted -H "Content-type:ap
 echo Creating Redis JobManager database with "${timeseries_module_name}" version "${timeseries_semantic_version}"
 curl -s -k -L -u demo@redis.com:redislabs --location-trusted -H "Content-type:application/json" -d '{"name": "JobManager", "type":"redis", "replication": false, "memory_size": 250000000, "port": 12001, "default_user": false, "roles_permissions": [{"role_uid": 4, "redis_acl_uid": 1}], "module_list": [{"module_args": "", "module_name": "'"$timeseries_module_name"'", "semantic_version": "'"$timeseries_semantic_version"'"} ] }' https://localhost:9443/v1/bdbs
 
-sleep 20
+sleep 30
 
 echo "Database port mappings per node. We are using mDNS so use the IP and exposed port to connect to the databases."
 echo "node1:"
