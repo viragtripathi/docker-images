@@ -63,8 +63,8 @@ echo "Cluster.." && cat ./cluster
 
 # Test the cluster. cluster info and nodes
 while [[ "$(curl -o ./bootstrap -w ''%{http_code}'' -u demo@redis.com:redislabs -k https://localhost:19443/v1/bootstrap)" != "200" ]]; do sleep 5; done
-while [[ "$(curl -o ./nodes -w ''%{http_code}'' -u demo@redis.com:redislabs -k https://localhost:19443/v1/nodes)" != "200" ]]; do sleep 5; done
 echo "Bootstrap.." && cat ./bootstrap
+while [[ "$(curl -o ./nodes -w ''%{http_code}'' -u demo@redis.com:redislabs -k https://localhost:19443/v1/nodes)" != "200" ]]; do sleep 5; done
 echo "Nodes.." && cat ./nodes
 
 # Get the module info to be used for database creation
@@ -78,18 +78,16 @@ search_semantic_version=$(cat ./modules | grep -oE '"module_name":"[^"]*|"semant
 timeseries_module_name=$(cat ./modules | grep -oE '"module_name":"[^"]*|"semantic_version":"[^"]*' | grep -iA1 timeseries | cut -d '"' -f 4 | head -1)
 timeseries_semantic_version=$(cat ./modules | grep -oE '"module_name":"[^"]*|"semantic_version":"[^"]*' | grep -iA1 timeseries | cut -d '"' -f 4 | tail -1)
 
-while [[ "$(curl -o ./virag -w ''%{http_code}'' -u demo@redis.com:redislabs -X POST -H "Content-Type: application/json" -d "{\"email\": \"virag@redis.com\",\"password\": \"Redis123\",\"name\": \"virag\",\"email_alerts\": false,\"role\": \"db_member\"}" -k https://localhost:19443/v1/users)" != "200" ]]; do sleep 5; done
-while [[ "$(curl -o ./allen -w ''%{http_code}'' -u demo@redis.com:redislabs -X POST -H "Content-Type: application/json" -d "{\"email\": \"allen@redis.com\",\"password\": \"Redis123\",\"name\": \"allen\",\"email_alerts\": false,\"role\": \"db_member\"}" -k https://localhost:19443/v1/users)" != "200" ]]; do sleep 5; done
-echo "User virag.." && cat ./virag
-echo "User allen.." && cat ./allen
+while [[ "$(curl -o ./acl -w ''%{http_code}'' -u demo@redis.com:redislabs -X POST -H "Content-Type: application/json" -d "{\"email\": \"user@redis.com\",\"password\": \"Redis123\",\"name\": \"user\",\"email_alerts\": false,\"role\": \"db_member\"}" -k https://localhost:19443/v1/users)" != "200" ]]; do sleep 5; done
+echo "ACL.." && cat ./acl
 
 echo "Creating databases..."
 echo Creating Redis Target database with "${search_module_name}" version "${search_semantic_version}" and "${json_module_name}" version "${json_semantic_version}"
-while [[ "$(curl -o ./Target -w ''%{http_code}'' -u demo@redis.com:redislabs --location-trusted -H "Content-type:application/json" -d '{ "name": "Target", "port": 12000, "memory_size": 500000000, "type" : "redis", "replication": false, "default_user": false, "roles_permissions": [{"role_uid": 4, "redis_acl_uid": 1}], "module_list": [ {"module_args": "PARTITIONS AUTO", "module_name": "'"$search_module_name"'", "semantic_version": "'"$search_semantic_version"'"}, {"module_args": "", "module_name": "'"$json_module_name"'", "semantic_version": "'"$json_semantic_version"'"} ] }' -k https://localhost:19443/v1/bdbs)" != "200" ]]; do sleep 5; done
+while [[ "$(curl -o ./Target -w ''%{http_code}'' -u demo@redis.com:redislabs --location-trusted -H "Content-type:application/json" -d '{ "name": "Target", "port": 12000, "memory_size": 500000000, "type" : "redis", "replication": false, "default_user": true, "authentication_redis_pass": "Redis123", "roles_permissions": [{"role_uid": 4, "redis_acl_uid": 1}], "module_list": [ {"module_args": "PARTITIONS AUTO", "module_name": "'"$search_module_name"'", "semantic_version": "'"$search_semantic_version"'"}, {"module_args": "", "module_name": "'"$json_module_name"'", "semantic_version": "'"$json_semantic_version"'"} ] }' -k https://localhost:19443/v1/bdbs)" != "200" ]]; do sleep 5; done
 echo "Database Target.." && cat ./Target
 
 echo Creating Redis JobManager database with "${timeseries_module_name}" version "${timeseries_semantic_version}"
-while [[ "$(curl -o ./JobManager -w ''%{http_code}'' -u demo@redis.com:redislabs --location-trusted -H "Content-type:application/json" -d '{"name": "JobManager", "type":"redis", "replication": false, "memory_size": 250000000, "port": 12001, "default_user": false, "roles_permissions": [{"role_uid": 4, "redis_acl_uid": 1}], "module_list": [{"module_args": "", "module_name": "'"$timeseries_module_name"'", "semantic_version": "'"$timeseries_semantic_version"'"} ] }' -k https://localhost:19443/v1/bdbs)" != "200" ]]; do sleep 5; done
+while [[ "$(curl -o ./JobManager -w ''%{http_code}'' -u demo@redis.com:redislabs --location-trusted -H "Content-type:application/json" -d '{"name": "JobManager", "type":"redis", "replication": false, "memory_size": 250000000, "port": 12001, "default_user": true, "authentication_redis_pass": "Redis123", "roles_permissions": [{"role_uid": 4, "redis_acl_uid": 1}], "module_list": [{"module_args": "", "module_name": "'"$timeseries_module_name"'", "semantic_version": "'"$timeseries_semantic_version"'"} ] }' -k https://localhost:19443/v1/bdbs)" != "200" ]]; do sleep 5; done
 echo "Database JobManager.." && cat ./JobManager
 
 echo "Database port mappings per node. We are using mDNS so use the IP and exposed port to connect to the databases."
@@ -107,6 +105,6 @@ echo "You can open a browser and access Redis Enterprise Admin UI at https://127
 echo "DISCLAIMER: This is best for local development or functional testing. Please see, https://docs.redis.com/latest/rs/installing-upgrading/quickstarts/docker-quickstart/"
 
 # Cleanup
-rm bootstrap nodes cluster modules allen virag Target JobManager
+rm bootstrap nodes cluster modules acl Target JobManager
 
 echo "done"
