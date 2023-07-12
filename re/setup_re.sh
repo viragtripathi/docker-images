@@ -58,7 +58,8 @@ echo "Waiting for the servers to start..."
 sleep 60
 echo "Creating Redis Enterprise cluster..."
 
-while [[ "$(curl -o /dev/null -w ''%{http_code}'' -X POST -H 'Content-Type:application/json' -d '{"action":"create_cluster","cluster":{"name":"re-cluster.local"},"node":{"paths":{"persistent_path":"/var/opt/redislabs/persist","ephemeral_path":"/var/opt/redislabs/tmp"}},"credentials":{"username":"demo@redis.com","password":"redislabs"}}' -k https://localhost:19443/v1/bootstrap/create_cluster)" != "200" ]]; do sleep 5; done
+while [[ "$(curl -o ./cluster -w ''%{http_code}'' -X POST -H 'Content-Type:application/json' -d '{"action":"create_cluster","cluster":{"name":"re-cluster.local"},"node":{"paths":{"persistent_path":"/var/opt/redislabs/persist","ephemeral_path":"/var/opt/redislabs/tmp"}},"credentials":{"username":"demo@redis.com","password":"redislabs"}}' -k https://localhost:19443/v1/bootstrap/create_cluster)" != "200" ]]; do sleep 5; done
+echo "Cluster.." && cat ./cluster
 
 # Test the cluster. cluster info and nodes
 while [[ "$(curl -o ./bootstrap -w ''%{http_code}'' -u demo@redis.com:redislabs -k https://localhost:19443/v1/bootstrap)" != "200" ]]; do sleep 5; done
@@ -67,14 +68,15 @@ echo "Bootstrap.." && cat ./bootstrap
 echo "Nodes.." && cat ./nodes
 
 # Get the module info to be used for database creation
-while [[ "$(curl -o ./modules.txt -w ''%{http_code}'' -u demo@redis.com:redislabs -k https://localhost:19443/v1/modules)" != "200" ]]; do sleep 5; done
+while [[ "$(curl -o ./modules -w ''%{http_code}'' -u demo@redis.com:redislabs -k https://localhost:19443/v1/modules)" != "200" ]]; do sleep 5; done
+echo "Modules.." && cat ./modules
 
-json_module_name=$(cat ./modules.txt | grep -oE '"module_name":"[^"]*|"semantic_version":"[^"]*' | grep -iA1 json | cut -d '"' -f 4 | head -1)
-json_semantic_version=$(cat ./modules.txt | grep -oE '"module_name":"[^"]*|"semantic_version":"[^"]*' | grep -iA1 json | cut -d '"' -f 4 | tail -1)
-search_module_name=$(cat ./modules.txt | grep -oE '"module_name":"[^"]*|"semantic_version":"[^"]*' | grep -iA1 search | cut -d '"' -f 4 | head -1)
-search_semantic_version=$(cat ./modules.txt | grep -oE '"module_name":"[^"]*|"semantic_version":"[^"]*' | grep -iA1 search | cut -d '"' -f 4 | tail -1)
-timeseries_module_name=$(cat ./modules.txt | grep -oE '"module_name":"[^"]*|"semantic_version":"[^"]*' | grep -iA1 timeseries | cut -d '"' -f 4 | head -1)
-timeseries_semantic_version=$(cat ./modules.txt | grep -oE '"module_name":"[^"]*|"semantic_version":"[^"]*' | grep -iA1 timeseries | cut -d '"' -f 4 | tail -1)
+json_module_name=$(cat ./modules | grep -oE '"module_name":"[^"]*|"semantic_version":"[^"]*' | grep -iA1 json | cut -d '"' -f 4 | head -1)
+json_semantic_version=$(cat ./modules | grep -oE '"module_name":"[^"]*|"semantic_version":"[^"]*' | grep -iA1 json | cut -d '"' -f 4 | tail -1)
+search_module_name=$(cat ./modules | grep -oE '"module_name":"[^"]*|"semantic_version":"[^"]*' | grep -iA1 search | cut -d '"' -f 4 | head -1)
+search_semantic_version=$(cat ./modules | grep -oE '"module_name":"[^"]*|"semantic_version":"[^"]*' | grep -iA1 search | cut -d '"' -f 4 | tail -1)
+timeseries_module_name=$(cat ./modules | grep -oE '"module_name":"[^"]*|"semantic_version":"[^"]*' | grep -iA1 timeseries | cut -d '"' -f 4 | head -1)
+timeseries_semantic_version=$(cat ./modules | grep -oE '"module_name":"[^"]*|"semantic_version":"[^"]*' | grep -iA1 timeseries | cut -d '"' -f 4 | tail -1)
 
 while [[ "$(curl -o ./virag -w ''%{http_code}'' -u demo@redis.com:redislabs -X POST -H "Content-Type: application/json" -d "{\"email\": \"virag@redis.com\",\"password\": \"Redis123\",\"name\": \"virag\",\"email_alerts\": false,\"role\": \"db_member\"}" -k https://localhost:19443/v1/users)" != "200" ]]; do sleep 5; done
 while [[ "$(curl -o ./allen -w ''%{http_code}'' -u demo@redis.com:redislabs -X POST -H "Content-Type: application/json" -d "{\"email\": \"allen@redis.com\",\"password\": \"Redis123\",\"name\": \"allen\",\"email_alerts\": false,\"role\": \"db_member\"}" -k https://localhost:19443/v1/users)" != "200" ]]; do sleep 5; done
@@ -105,6 +107,6 @@ echo "You can open a browser and access Redis Enterprise Admin UI at https://127
 echo "DISCLAIMER: This is best for local development or functional testing. Please see, https://docs.redis.com/latest/rs/installing-upgrading/quickstarts/docker-quickstart/"
 
 # Cleanup
-rm bootstrap nodes modules.txt allen virag Target JobManager
+rm bootstrap nodes cluster modules allen virag Target JobManager
 
 echo "done"
